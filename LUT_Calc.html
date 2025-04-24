@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Waveform LUT Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+      padding: 10px;
+      line-height: 1.4;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .controls {
+      flex: 1;
+      min-width: 250px;
+      background-color: #2d2d2d;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .controls h3 {
+      font-size: 1rem;
+      font-weight: 500;
+      margin-bottom: 5px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid #444;
+    }
+    .control-group {
+      margin-bottom: 10px;
+    }
+    .control-group label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 3px;
+    }
+    .control-group select,
+    .control-group input[type="text"],
+    .control-group input[type="number"] {
+      width: 100%;
+      padding: 5px;
+      background-color: #3c3c3c;
+      border: 1px solid #555;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-size: 0.8rem;
+    }
+    .control-group select:focus,
+    .control-group input:focus {
+      outline: none;
+      border-color: #42a5f5;
+      box-shadow: 0 0 3px rgba(66, 165, 245, 0.3);
+    }
+    .control-group input[type="radio"],
+    .control-group input[type="checkbox"] {
+      margin-right: 4px;
+    }
+    .control-group label.inline {
+      display: inline-block;
+      margin-right: 10px;
+      font-size: 0.8rem;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+    .control-group button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .control-group button#downloadHeader {
+      background-color: #42a5f5;
+      color: #fff;
+    }
+    .control-group button#downloadHeader:hover {
+      background-color: #1e88e5;
+    }
+    .control-group button#playPauseAudio {
+      background-color: #66bb6a;
+      color: #fff;
+      margin-top: 5px;
+    }
+    .control-group button#playPauseAudio:hover {
+      background-color: #4caf50;
+    }
+    .control-group button#copyOutput {
+      background-color: #888;
+      color: #fff;
+    }
+    .control-group button#copyOutput:hover {
+      background-color: #666;
+    }
+    .control-group textarea {
+      width: 100%;
+      height: 100px;
+      background-color: #3c3c3c;
+      border: 1px solid #555;
+      border-radius: 3px;
+      color: #e0e0e0;
+      font-family: monospace;
+      font-size: 0.8rem;
+      padding: 5px;
+      resize: none;
+    }
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .visualization {
+      flex: 2;
+      min-width: 250px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #waveCanvas {
+      width: 100%;
+      max-width: 600px;
+      height: 200px;
+      background-color: #2d2d2d;
+      border: 1px solid #444;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    @media (max-width: 700px) {
+      .container {
+        flex-direction: column;
+      }
+      .visualization {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <div class="control-group">
+        <h3>Waveform Settings</h3>
+        <label for="samples">Samples per Period:</label>
+        <input type="number" id="samples" value="128" min="1" max="10000" step="1">
+
+        <label for="bits">Bit Resolution:</label>
+        <input type="number" id="bits" value="8" min="1" max="53" step="1">
+
+        <label for="waveform">Waveform Type:</label>
+        <select id="waveform">
+          <option value="sine">Sine</option>
+          <option value="cosine">Cosine</option>
+          <option value="square">Square</option>
+          <option value="triangle">Triangle</option>
+          <option value="sawtooth">Sawtooth</option>
+          <option value="whiteNoise">White Noise</option>
+          <option value="custom">Custom</option>
+        </select>
+
+        <label for="customFormula">Custom Formula (t: 0 to 1):</label>
+        <input type="text" id="customFormula" placeholder="e.g., Math.sin(2 * Math.PI * t)">
+      </div>
+
+      <div class="control-group">
+        <h3>Audio</h3>
+        <label for="frequency">Playback Frequency (Hz):</label>
+        <input type="number" id="frequency" value="440" min="20" max="2000" step="1">
+        <button id="playPauseAudio" onclick="toggleAudio()">Play Audio</button>
+      </div>
+
+      <div class="control-group">
+        <h3>Output Settings</h3>
+        <label>Output Format:</label>
+        <label class="inline"><input type="radio" name="format" value="decimal" checked> Decimal</label>
+        <label class="inline"><input type="radio" name="format" value="hex"> Hexadecimal</label>
+
+        <label><input type="checkbox" id="signed"> Signed Values</label>
+      </div>
+
+      <div class="buttons">
+        <button id="downloadHeader" onclick="downloadHeader()">Download .h File</button>
+      </div>
+
+      <div class="control-group">
+        <div class="output-header">
+          <h3>LUT Output</h3>
+          <select id="outputFormat" onchange="generateLUT()">
+            <option value="simple">Simple</option>
+            <option value="csv">CSV</option>
+            <option value="c">C/C++</option>
+            <option value="java">Java</option>
+          </select>
+        </div>
+        <textarea id="lutOutput" readonly></textarea>
+        <button id="copyOutput" onclick="copyToClipboard()">Copy to Clipboard</button>
+      </div>
+    </div>
+
+    <div class="visualization">
+      <canvas id="waveCanvas"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const waveforms = {
+      sine: t => Math.sin(2 * Math.PI * t),
+      cosine: t => Math.cos(2 * Math.PI * t),
+      square: t => t < 0.5 ? 1 : -1,
+      triangle: t => 4 * Math.abs(t - 0.5) - 1,
+      sawtooth: t => 2 * t - 1,
+      whiteNoise: () => Math.random() * 2 - 1,
+      custom: t => evaluateCustomFormula(t)
+    };
+
+    let lutValues = [];
+    let audioSource = null;
+    let isPlaying = false;
+    let startTime = 0;
+    let phase = 0;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function evaluateCustomFormula(t) {
+      const formula = document.getElementById('customFormula').value;
+      if (!formula) return 0;
+      try {
+        const fn = new Function('t', `with (Math) { return ${formula}; }`);
+        const result = fn(t);
+        return isFinite(result) ? result : 0;
+      } catch (e) {
+        alert('Invalid custom formula');
+        return 0;
+      }
+    }
+
+    function formatValues(values, format, isSigned, bits) {
+      return values.map(v => {
+        if (format === 'hex') {
+          let hexValue = v;
+          if (isSigned && v < 0) {
+            const range = Math.pow(2, bits);
+            hexValue = range + v;
+          }
+          let hexStr = Math.abs(hexValue).toString(16).toUpperCase();
+          if (hexValue < 0) {
+            hexStr = '-' + hexStr;
+          }
+          return '0x' + hexStr.padStart(Math.ceil(bits / 4), '0');
+        }
+        return v.toString();
+      });
+    }
+
+    function generateLUT() {
+      const samplesInput = parseInt(document.getElementById('samples').value);
+      const bitsInput = parseInt(document.getElementById('bits').value);
+      const waveform = document.getElementById('waveform').value;
+      const isSigned = document.getElementById('signed').checked;
+      const format = document.querySelector('input[name="format"]:checked').value;
+      const outputFormat = document.getElementById('outputFormat').value;
+
+      if (isNaN(samplesInput) || samplesInput < 1 || samplesInput > 10000) {
+        alert('Please enter a number of samples between 1 and 10000');
+        return;
+      }
+
+      if (isNaN(bitsInput) || bitsInput < 1 || bitsInput > 53) {
+        alert('Please enter a bit resolution between 1 and 53');
+        return;
+      }
+
+      const samples = samplesInput;
+      const bits = bitsInput;
+
+      const maxValue = Math.pow(2, bits - 1) - 1;
+      const minValue = isSigned ? -Math.pow(2, bits - 1) : 0;
+      const range = isSigned ? Math.pow(2, bits) : Math.pow(2, bits) - 1;
+
+      const oldLutValues = lutValues.slice();
+      lutValues = [];
+      for (let i = 0; i < samples; i++) {
+        const t = i / samples;
+        let value = waveforms[waveform](t);
+        value = Math.max(-1, Math.min(1, value));
+
+        let scaledValue;
+        if (isSigned) {
+          scaledValue = Math.round(value * maxValue);
+        } else {
+          scaledValue = Math.round(((value + 1) / 2) * range);
+        }
+        lutValues.push(scaledValue);
+      }
+
+      const formattedValues = formatValues(lutValues, format, isSigned, bits);
+      let output;
+      switch (outputFormat) {
+        case 'simple':
+          output = formattedValues.join(', ');
+          break;
+        case 'csv':
+          output = formattedValues.join(',');
+          break;
+        case 'c':
+          const type = isSigned ? `int${bits}_t` : `uint${bits}_t`;
+          output = `const ${type} ${waveform}_wave[${samples}] = {\n  ${formattedValues.join(', ')}\n};`;
+          break;
+        case 'java':
+          output = `int[] ${waveform}_wave = {\n  ${formattedValues.join(', ')}\n};`;
+          break;
+        default:
+          output = formattedValues.join(', ');
+      }
+      document.getElementById('lutOutput').value = output;
+
+      drawWaveform();
+
+      if (isPlaying) {
+        updateAudio(oldLutValues);
+      }
+    }
+
+    function drawWaveform() {
+      const canvas = document.getElementById('waveCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+
+      const bits = parseInt(document.getElementById('bits').value);
+      const isSigned = document.getElementById('signed').checked;
+
+      // CORRECCIÓN APLICADA AQUÍ
+      const maxPossible = isSigned ? Math.pow(2, bits - 1) - 1 : Math.pow(2, bits) - 1;
+      const minPossible = isSigned ? -Math.pow(2, bits - 1) : 0;
+
+      const padding = 0.1;
+      const plotHeight = canvas.height * (1 - 2 * padding);
+      const yOffset = canvas.height * padding;
+
+      const barWidth = canvas.width / lutValues.length * 0.8;
+      const gap = canvas.width / lutValues.length * 0.2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#42a5f5';
+
+      const zeroY = yOffset + (plotHeight / 2);
+      if (isSigned) {
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(0, zeroY);
+        ctx.lineTo(canvas.width, zeroY);
+        ctx.stroke();
+      }
+
+      for (let i = 0; i < lutValues.length; i++) {
+        let normalized;
+        if (isSigned) {
+          const absMax = Math.pow(2, bits - 1);
+          normalized = lutValues[i] / absMax;
+          normalized = Math.max(-1, Math.min(1, normalized));
+        } else {
+          normalized = (lutValues[i] - minPossible) / (maxPossible - minPossible);
+        }
+
+        let y, height, barY;
+        if (isSigned) {
+          y = zeroY - (normalized * (plotHeight / 2));
+          height = Math.abs(normalized) * (plotHeight / 2);
+          
+          if (normalized >= 0) {
+            barY = zeroY - (normalized * (plotHeight / 2));
+            height = (zeroY - barY);
+          } else {
+            barY = zeroY;
+            height = (normalized * (plotHeight / 2) * -1);
+          }
+        } else {
+          y = yOffset + (1 - normalized) * plotHeight;
+          height = (canvas.height - yOffset - y);
+          barY = y;
+        }
+
+        const x = i * (barWidth + gap);
+        ctx.fillRect(x, barY, barWidth, height);
+      }
+    }
+
+    function createAudioBuffer(lut, samples, frequency, phaseOffset = 0) {
+      const sampleRate = audioCtx.sampleRate;
+      const duration = 1;
+      const bufferSize = sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      const bits = parseInt(document.getElementById('bits').value);
+      const isSigned = document.getElementById('signed').checked;
+      const maxPossible = isSigned ? Math.pow(2, bits - 1) - 1 : Math.pow(2, bits) - 1;
+      const minPossible = isSigned ? -Math.pow(2, bits - 1) : 0;
+      const range = maxPossible - minPossible;
+
+      const samplesPerCycle = sampleRate / frequency;
+      const lutSampleRate = samplesPerCycle / samples;
+
+      for (let i = 0; i < bufferSize; i++) {
+        const t = (i / lutSampleRate + phaseOffset) % samples;
+        const index = Math.floor(t);
+        const nextIndex = (index + 1) % samples;
+        const frac = t - index;
+
+        const value = lut[index] + frac * (lut[nextIndex] - lut[index]);
+        const normalized = (value - minPossible) / range;
+        data[i] = normalized * 2 - 1;
+      }
+
+      return buffer;
+    }
+
+    function createTransitionBuffer(oldLut, newLut, samples, frequency, phaseOffset, duration) {
+      const sampleRate = audioCtx.sampleRate;
+      const bufferSize = Math.floor(sampleRate * duration);
+      const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      const bits = parseInt(document.getElementById('bits').value);
+      const isSigned = document.getElementById('signed').checked;
+      const maxPossible = isSigned ? Math.pow(2, bits - 1) - 1 : Math.pow(2, bits) - 1;
+      const minPossible = isSigned ? -Math.pow(2, bits - 1) : 0;
+      const range = maxPossible - minPossible;
+
+      const samplesPerCycle = sampleRate / frequency;
+      const lutSampleRate = samplesPerCycle / samples;
+
+      for (let i = 0; i < bufferSize; i++) {
+        const t = (i / lutSampleRate + phaseOffset) % samples;
+        const index = Math.floor(t);
+        const nextIndex = (index + 1) % samples;
+        const frac = t - index;
+
+        const oldValue = oldLut[index] + frac * (oldLut[nextIndex] - oldLut[index]);
+        const newValue = newLut[index] + frac * (newLut[nextIndex] - newLut[index]);
+
+        const fade = i / bufferSize;
+        const value = oldValue * (1 - fade) + newValue * fade;
+
+        const normalized = (value - minPossible) / range;
+        data[i] = normalized * 2 - 1;
+      }
+
+      return buffer;
+    }
+
+    function playAudio() {
+      const frequency = parseFloat(document.getElementById('frequency').value);
+      if (isNaN(frequency) || frequency < 20 || frequency > 2000) {
+        alert('Please enter a frequency between 20 Hz and 2000 Hz');
+        return;
+      }
+
+      const samples = lutValues.length;
+      const buffer = createAudioBuffer(lutValues, samples, frequency);
+
+      audioSource = audioCtx.createBufferSource();
+      audioSource.buffer = buffer;
+      audioSource.loop = true;
+      audioSource.connect(audioCtx.destination);
+      startTime = audioCtx.currentTime;
+      audioSource.start();
+      isPlaying = true;
+      phase = 0;
+      document.getElementById('playPauseAudio').textContent = 'Pause Audio';
+    }
+
+    function updateAudio(oldLutValues) {
+      const frequency = parseFloat(document.getElementById('frequency').value);
+      if (isNaN(frequency) || frequency < 20 || frequency > 2000) {
+        alert('Please enter a frequency between 20 Hz and 2000 Hz');
+        return;
+      }
+
+      const samples = lutValues.length;
+      const samplesPerCycle = audioCtx.sampleRate / frequency;
+
+      const elapsedTime = audioCtx.currentTime - startTime;
+      const cycles = elapsedTime * frequency;
+      phase = (cycles % 1) * samples;
+
+      if (audioSource) {
+        audioSource.stop();
+        audioSource.disconnect();
+      }
+
+      const transitionDuration = 0.05;
+      const transitionBuffer = createTransitionBuffer(oldLutValues, lutValues, samples, frequency, phase, transitionDuration);
+
+      const newBuffer = createAudioBuffer(lutValues, samples, frequency, phase);
+
+      const transitionSource = audioCtx.createBufferSource();
+      transitionSource.buffer = transitionBuffer;
+      transitionSource.connect(audioCtx.destination);
+      transitionSource.start(audioCtx.currentTime);
+
+      audioSource = audioCtx.createBufferSource();
+      audioSource.buffer = newBuffer;
+      audioSource.loop = true;
+      audioSource.connect(audioCtx.destination);
+      audioSource.start(audioCtx.currentTime + transitionDuration);
+
+      startTime = audioCtx.currentTime + transitionDuration;
+    }
+
+    function stopAudio() {
+      if (audioSource) {
+        audioSource.stop();
+        audioSource.disconnect();
+        audioSource = null;
+      }
+      isPlaying = false;
+      startTime = 0;
+      phase = 0;
+      document.getElementById('playPauseAudio').textContent = 'Play Audio';
+    }
+
+    function toggleAudio() {
+      if (!lutValues.length) {
+        alert('Please generate a LUT before playing audio');
+        return;
+      }
+
+      if (isPlaying) {
+        stopAudio();
+      } else {
+        playAudio();
+      }
+    }
+
+    function downloadHeader() {
+      const samples = parseInt(document.getElementById('samples').value);
+      const bits = parseInt(document.getElementById('bits').value);
+      const waveform = document.getElementById('waveform').value;
+      const isSigned = document.getElementById('signed').checked;
+      const format = document.querySelector('input[name="format"]:checked').value;
+
+      const type = isSigned ? `int${bits}_t` : `uint${bits}_t`;
+      const arrayName = waveform + '_wave';
+      const values = formatValues(lutValues, format, isSigned, bits).join(', ');
+
+      const content = `#ifndef ${arrayName.toUpperCase()}_H
+#define ${arrayName.toUpperCase()}_H
+
+const ${type} ${arrayName}[${samples}] = { ${values} };
+
+#endif`;
+
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${arrayName}.h`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function copyToClipboard() {
+      const lutOutput = document.getElementById('lutOutput').value;
+      navigator.clipboard.writeText(lutOutput).then(() => {
+        alert('LUT Output copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy to clipboard: ' + err);
+      });
+    }
+
+    document.getElementById('samples').addEventListener('input', generateLUT);
+    document.getElementById('bits').addEventListener('input', generateLUT);
+    document.getElementById('waveform').addEventListener('change', function() {
+      const formulaInput = document.getElementById('customFormula');
+      if (this.value === 'custom') {
+        formulaInput.disabled = false;
+        formulaInput.placeholder = 'e.g., Math.sin(2 * Math.PI * t)';
+      } else {
+        formulaInput.disabled = true;
+        formulaInput.value = '';
+      }
+      generateLUT();
+    });
+    document.getElementById('customFormula').addEventListener('input', generateLUT);
+    document.getElementById('frequency').addEventListener('input', generateLUT);
+    document.getElementById('signed').addEventListener('change', generateLUT);
+    document.querySelectorAll('input[name="format"]').forEach(radio => {
+      radio.addEventListener('change', generateLUT);
+    });
+
+    generateLUT();
+  </script>
+</body>
+</html>
