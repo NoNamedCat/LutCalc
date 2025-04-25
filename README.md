@@ -47,14 +47,6 @@ You can easily create waveforms like sine, cosine, triangle, square, sawtooth, i
 
 ---
 
-## Notes
-
-- **No normalization**: The tool expects formula outputs in the 0–1 range for unsigned mode or -1–1 for signed mode.
-- **Single file**: Entire application is contained in a standalone HTML file without external libraries.
-- **Accurate audio preview**: Playback frequency is independent from the sample rate, preserving the original pitch during preview.
-
----
-
 ## License
 
 This project is released under the [MIT License](LICENSE).
